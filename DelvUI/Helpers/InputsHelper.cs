@@ -1,7 +1,7 @@
 ﻿/*
 Copyright(c) 2021 attickdoor (https://github.com/attickdoor/MOActionPlugin)
 Modifications Copyright(c) 2021 DelvUI
-09/21/2021 - Used original's code hooks and action validations while using 
+09/21/2021 - Used original's code hooks and action validations while using
 DelvUI's own logic to select a target.
 
 This program is free software: you can redistribute it and/or modify
@@ -329,10 +329,15 @@ namespace DelvUI.Helpers
                             _leftButtonWasDown = msg == WM_LBUTTONDOWN;
                             _rightButtonWasDown = msg == WM_RBUTTONDOWN;
 
-                            if (shouldTakeInput)
-                            {
-                                return (IntPtr)0;
-                            }
+                            // Hack crado: On veut pas que delvui gobe l'input right/left click parce que ca encule le
+                            //  right click to move camera si jamais un clique sur une nameplate
+                            // Dans un monde idéal faudrait tirer la config de l'objet pour dire
+                            // "est ce que c'est un objet ou on veut gober l'input ou pas"
+                            // Mais il est 7h du mat j'ai pas dormi donc on est pas dans un monde idéal là
+                            // if (shouldTakeInput)
+                            // {
+                            //     return (IntPtr)0;
+                            // }
                         }
                         // otherwise we let imgui handle the inputs
                         else
