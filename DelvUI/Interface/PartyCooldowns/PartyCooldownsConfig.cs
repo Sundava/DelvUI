@@ -4,6 +4,7 @@ using DelvUI.Enums;
 using DelvUI.Helpers;
 using DelvUI.Interface.Bars;
 using DelvUI.Interface.GeneralElements;
+using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -133,7 +134,7 @@ namespace DelvUI.Interface.PartyCooldowns
         {
             Vector2 size = new Vector2(150, 24);
 
-            var config = new PartyCooldownsBarConfig(Vector2.Zero, size, new(Vector4.Zero));
+            PartyCooldownsBarConfig config = new PartyCooldownsBarConfig(Vector2.Zero, size, PluginConfigColor.Empty);
 
             config.NameLabel.FontID = FontsConfig.DefaultMediumFontKey;
             config.TimeLabel.FontID = FontsConfig.DefaultMediumFontKey;
@@ -172,6 +173,8 @@ namespace DelvUI.Interface.PartyCooldowns
     {
         public List<PartyCooldownData> Cooldowns = new List<PartyCooldownData>();
 
+        private List<uint> _removedIds = new() { 7398 };
+
         private JobRoles _roleFilter = JobRoles.Unknown;
         private uint _tankFilter = 0;
         private uint _healerFilter = 0;
@@ -204,6 +207,17 @@ namespace DelvUI.Interface.PartyCooldowns
         {
             bool needsSave = false;
 
+            // remove old cooldowns that are not valid anymore
+            foreach (uint id in _removedIds)
+            {
+                PartyCooldownData? data = Cooldowns.FirstOrDefault(data => data.ActionId == id);
+                if (data != null)
+                {
+                    Cooldowns.Remove(data);
+                }
+            }
+
+            // update data using the game files
             foreach (uint key in DefaultCooldowns.Keys)
             {
                 PartyCooldownData? data = Cooldowns.FirstOrDefault(data => data.ActionId == key);
@@ -248,6 +262,18 @@ namespace DelvUI.Interface.PartyCooldowns
                 if (cooldown.ActionId == 7405 || cooldown.ActionId == 16012 || cooldown.ActionId == 16889)
                 {
                     cooldown.OverriddenCooldownText = "90-120";
+                }
+
+                // reprisal, feint, addle
+                else if (cooldown.ActionId == 7535 || cooldown.ActionId == 7549 || cooldown.ActionId == 7560)
+                {
+                    cooldown.OverriddenDurationText = "10-15";
+                }
+
+                // swiftcast
+                else if (cooldown.ActionId == 7561)
+                {
+                    cooldown.OverriddenCooldownText = "40-60";
                 }
 
                 cooldown.IconId = action.Icon;
@@ -363,7 +389,8 @@ namespace DelvUI.Interface.PartyCooldowns
                     // duration
                     if (ImGui.TableSetColumnIndex(4))
                     {
-                        ImGui.Text($"{cooldown.EffectDuration}");
+                        string durationText = cooldown.OverriddenDurationText != null ? cooldown.OverriddenDurationText : $"{cooldown.EffectDuration}";
+                        ImGui.Text(durationText);
                     }
 
                     // priority
@@ -527,6 +554,7 @@ namespace DelvUI.Interface.PartyCooldowns
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.NIN], JobIDs.NIN, ref _meleeFilter);
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.SAM], JobIDs.SAM, ref _meleeFilter);
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.RPR], JobIDs.RPR, ref _meleeFilter);
+                DrawJobFilter(JobsHelper.JobNames[JobIDs.VPR], JobIDs.VPR, ref _meleeFilter);
             }
             else if (_roleFilter == JobRoles.DPSRanged)
             {
@@ -541,6 +569,7 @@ namespace DelvUI.Interface.PartyCooldowns
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.BLM], JobIDs.BLM, ref _casterFilter);
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.SMN], JobIDs.SMN, ref _casterFilter);
                 DrawJobFilter(JobsHelper.JobNames[JobIDs.RDM], JobIDs.RDM, ref _casterFilter);
+                DrawJobFilter(JobsHelper.JobNames[JobIDs.PCT], JobIDs.PCT, ref _casterFilter);
             }
         }
 
@@ -603,7 +632,7 @@ namespace DelvUI.Interface.PartyCooldowns
             [7571] = NewData(7571, JobRoles.Healer, 48, 120, 0, 80, 5, PartyCooldownEnabled.Disabled), // rescue
 
             // AST
-            [16552] = NewData(16552, JobIDs.AST, 50, 120, 15, 30, 3, PartyCooldownEnabled.PartyCooldowns), // divination
+            [16552] = NewData(16552, JobIDs.AST, 50, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // divination
             [3613] = NewData(3613, JobIDs.AST, 58, 60, 18, 80, 2, PartyCooldownEnabled.PartyFrames), // collective unconscious
             [16553] = NewData(16553, JobIDs.AST, 60, 60, 15, 80, 2, PartyCooldownEnabled.PartyFrames), // celestial opposition
             [7439] = NewData(7439, JobIDs.AST, 62, 60, 20, 80, 2, PartyCooldownEnabled.PartyFrames), // earthly star (stellar detonation = 8324)
@@ -618,7 +647,7 @@ namespace DelvUI.Interface.PartyCooldowns
             [3585] = NewData(3585, JobIDs.SCH, 56, 90, 1, 80, 2, PartyCooldownEnabled.PartyFrames), // deployment tactics
             [25867] = NewData(25867, JobIDs.SCH, 86, 60, 10, 80, 2, PartyCooldownEnabled.PartyFrames), // protraction
             [25868] = NewData(25868, JobIDs.SCH, 90, 120, 20, 80, 2, PartyCooldownEnabled.PartyFrames), // expedient
-            [7436] = NewData(7436, JobIDs.SCH, 66, 120, 15, 30, 3, PartyCooldownEnabled.PartyCooldowns), // chain stratagem
+            [7436] = NewData(7436, JobIDs.SCH, 66, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // chain stratagem
             [7434] = NewData(7434, JobIDs.SCH, 62, 45, 1, 50, 4, PartyCooldownEnabled.PartyFrames), // excogitation
 
             // WHM
@@ -653,23 +682,22 @@ namespace DelvUI.Interface.PartyCooldowns
             [2241] = NewData(2241, JobIDs.NIN, 2, 120, 20, 20, 4, PartyCooldownEnabled.PartyFrames), // shade shift
 
             // DRG
-            [3557] = NewData(3557, JobIDs.DRG, 52, 120, 15, 30, 3, PartyCooldownEnabled.PartyCooldowns), // battle litany
-            [7398] = NewData(7398, JobIDs.DRG, 66, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // dragon sight
+            [3557] = NewData(3557, JobIDs.DRG, 52, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // battle litany
             [85] = NewData(85, JobIDs.DRG, 30, 60, 20, 10, 3, PartyCooldownEnabled.PartyFrames), // lance charge
 
             // MNK
             [65] = NewData(65, JobIDs.MNK, 42, 90, 15, 50, 2, PartyCooldownEnabled.PartyFrames), // mantra
-            [7396] = NewData(7396, JobIDs.MNK, 70, 120, 15, 90, 3, PartyCooldownEnabled.PartyCooldowns), // brotherhood
+            [7396] = NewData(7396, JobIDs.MNK, 70, 120, 20, 90, 3, PartyCooldownEnabled.PartyCooldowns), // brotherhood
             [7395] = NewData(7395, JobIDs.MNK, 68, 60, 20, 10, 3, PartyCooldownEnabled.PartyFrames), // riddle of fire
             [7394] = NewData(7394, JobIDs.MNK, 64, 120, 15, 20, 4, PartyCooldownEnabled.PartyFrames), // riddle of earth
 
             // RPR
             [24405] = NewData(24405, JobIDs.RPR, 72, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // arcane circle
             [24404] = NewData(24404, JobIDs.RPR, 40, 30, 5, 10, 4, PartyCooldownEnabled.PartyFrames), // arcane crest
-
+            
             // RANGED -------------------------------------------------------------------------------------------------
             // BRD
-            [118] = NewData(118, JobIDs.BRD, 50, 120, 15, 30, 3, PartyCooldownEnabled.PartyCooldowns), // battle voice
+            [118] = NewData(118, JobIDs.BRD, 50, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // battle voice
             [7405] = NewData(7405, JobIDs.BRD, 62, 90, 15, 70, 2, PartyCooldownEnabled.PartyFrames, "90-120"), // troubadour
             [7408] = NewData(7408, JobIDs.BRD, 66, 120, 15, 40, 2, PartyCooldownEnabled.PartyFrames), // nature's minne
             [25785] = NewData(25785, JobIDs.BRD, 90, 110, 15, 30, 3, PartyCooldownEnabled.PartyCooldowns), // radiant finale
@@ -692,12 +720,16 @@ namespace DelvUI.Interface.PartyCooldowns
             [7520] = NewData(7520, JobIDs.RDM, 58, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // embolden
 
             // SMN
-            [25801] = NewData(25801, JobIDs.SMN, 66, 120, 30, 30, 3, PartyCooldownEnabled.PartyCooldowns), // searing light
+            [25801] = NewData(25801, JobIDs.SMN, 66, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // searing light
             [25799] = NewData(25799, JobIDs.SMN, 2, 60, 30, 10, 3, PartyCooldownEnabled.PartyFrames), // radiant aegis
 
             // BLM
             [3573] = NewData(3573, JobIDs.BLM, 52, 120, 30, 90, 3, PartyCooldownEnabled.PartyFrames), // ley lines
             [157] = NewData(157, JobIDs.BLM, 38, 120, 20, 10, 4, PartyCooldownEnabled.PartyFrames), // manaward
+
+            // PCT
+            [35349] = NewData(35349, JobIDs.PCT, 70, 120, 20, 30, 3, PartyCooldownEnabled.PartyCooldowns), // scenic muse
+            [34685] = NewData(34685, JobIDs.PCT, 10, 120, 10, 10, 4, PartyCooldownEnabled.PartyFrames), // tempera coat
 
             // MULTI-ROLE  -------------------------------------------------------------------------------------------------
             [7541] = NewData(7541, new List<JobRoles>() { JobRoles.DPSMelee, JobRoles.DPSRanged }, 8, 120, 0, 80, 4, PartyCooldownEnabled.PartyFrames), // second wind

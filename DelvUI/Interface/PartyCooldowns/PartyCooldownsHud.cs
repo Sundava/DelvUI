@@ -126,7 +126,7 @@ namespace DelvUI.Interface.PartyCooldowns
         {
             if (!Config.Enabled) { return; }
 
-            PlayerCharacter? player = Plugin.ClientState.LocalPlayer;
+            IPlayerCharacter? player = Plugin.ClientState.LocalPlayer;
             if (player == null) { return; }
 
             float offset = 0;
@@ -153,9 +153,9 @@ namespace DelvUI.Interface.PartyCooldowns
                     float cooldownTime = cooldown.CooldownTimeRemaining();
                     float effectTime = cooldown.EffectTimeRemaining();
 
-                    float max = effectTime > 0 ? cooldown.Data.EffectDuration : cooldown.Data.CooldownDuration;
+                    float max = effectTime > 0 ? cooldown.GetEffectDuration() : cooldown.GetCooldown();
                     float current = effectTime > 0 ? effectTime : cooldownTime;
-
+                    
                     float sizeX = Math.Max(1, _barConfig.Size.X - _barConfig.Size.Y);
                     Vector2 size = new Vector2(sizeX, _barConfig.Size.Y);
 
@@ -234,7 +234,7 @@ namespace DelvUI.Interface.PartyCooldowns
 
                                 if (_barConfig.ShowIconCooldownAnimation && effectTime == 0 && cooldownTime > 0)
                                 {
-                                    DrawHelper.DrawIconCooldown(iconPos, iconSize, cooldownTime, cooldown.Data.CooldownDuration, drawList);
+                                    DrawHelper.DrawIconCooldown(iconPos, iconSize, cooldownTime, cooldown.GetCooldown(), drawList);
                                 }
 
                                 if (_barConfig.DrawBorder)
@@ -251,8 +251,8 @@ namespace DelvUI.Interface.PartyCooldowns
                     // name
                     PluginConfigColor? labelColor = effectTime > 0 && _barConfig.ChangeLabelsColorWhenActive ? _barConfig.LabelsActiveColor : null;
 
-                    Character? character = cooldown.Member?.Character;
-                    if (character == null && cooldown.SourceId == player.ObjectId)
+                    ICharacter? character = cooldown.Member?.Character;
+                    if (character == null && cooldown.SourceId == player.GameObjectId)
                     {
                         character = player;
                     }
@@ -313,16 +313,16 @@ namespace DelvUI.Interface.PartyCooldowns
             }
         }
 
-        private uint? GetJobId(PartyCooldown cooldown, PlayerCharacter player)
+        private uint? GetJobId(PartyCooldown cooldown, IPlayerCharacter player)
         {
             uint jobId = cooldown.Data.JobId;
             if (jobId != 0) { return jobId; }
 
             if (cooldown.Member != null) { return cooldown.Member.JobId; }
 
-            if (cooldown.SourceId == player.ObjectId) { return player.ClassJob.Id; }
+            if (cooldown.SourceId == player.GameObjectId) { return player.ClassJob.Id; }
 
-            Character? chara = Plugin.ObjectTable.SearchById(cooldown.SourceId) as Character;
+            ICharacter? chara = Plugin.ObjectTable.SearchById(cooldown.SourceId) as ICharacter;
             return chara?.ClassJob.Id;
         }
     }

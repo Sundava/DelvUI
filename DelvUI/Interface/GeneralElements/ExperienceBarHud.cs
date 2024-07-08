@@ -3,6 +3,7 @@ using Dalamud.Interface;
 using DelvUI.Config;
 using DelvUI.Helpers;
 using DelvUI.Interface.Bars;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -13,7 +14,7 @@ namespace DelvUI.Interface.GeneralElements
         private ExperienceBarConfig Config => (ExperienceBarConfig)_config;
         public VisibilityConfig VisibilityConfig => Config.VisibilityConfig;
 
-        public GameObject? Actor { get; set; } = null;
+        public IGameObject? Actor { get; set; } = null;
 
         private ExperienceHelper _helper = new ExperienceHelper();
         private IconLabelHud _sanctuaryLabel;
@@ -31,7 +32,10 @@ namespace DelvUI.Interface.GeneralElements
 
         public override void DrawChildren(Vector2 origin)
         {
-            if (!Config.Enabled || Actor is null || Config.HideWhenInactive && (Plugin.ClientState.LocalPlayer?.Level ?? 0) >= 90 || (Config.HideWhenInactive && Config.HideWhenDownsynced && _helper.IsMaxLevel()))
+            if (!Config.Enabled || 
+                Actor is null || 
+                Config.HideWhenInactive && (Plugin.ClientState.LocalPlayer?.Level ?? 0) >= 100 || 
+                (Config.HideWhenInactive && Config.HideWhenDownsynced && _helper.IsMaxLevel()))
             {
                 return;
             }
@@ -72,7 +76,7 @@ namespace DelvUI.Interface.GeneralElements
             if (addon == null) { return false; }
             if (addon->AtkUnitBase.UldManager.NodeListCount < 4) { return false; }
 
-            return addon->AtkUnitBase.UldManager.NodeList[4]->IsVisible;
+            return addon->AtkUnitBase.UldManager.NodeList[4]->IsVisible();
         }
     }
 }

@@ -390,7 +390,7 @@ namespace DelvUI.Interface
         {
             if (!FontsManager.Instance.DefaultFontBuilt)
             {
-                Plugin.UiBuilder.RebuildFonts();
+                Plugin.UiBuilder.FontAtlas.BuildFontsAsync();
             }
 
             try
@@ -565,7 +565,7 @@ namespace DelvUI.Interface
         private void AssignActors()
         {
             // player
-            PlayerCharacter? player = Plugin.ClientState.LocalPlayer;
+            IPlayerCharacter? player = Plugin.ClientState.LocalPlayer;
             foreach (var element in _hudElementsUsingPlayer)
             {
                 element.Actor = player;
@@ -577,7 +577,7 @@ namespace DelvUI.Interface
             }
 
             // target
-            GameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
+            IGameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
             foreach (var element in _hudElementsUsingTarget)
             {
                 element.Actor = target;
@@ -589,14 +589,14 @@ namespace DelvUI.Interface
             }
 
             // target of target
-            GameObject? targetOfTarget = Utils.FindTargetOfTarget(target, player, Plugin.ObjectTable);
+            IGameObject? targetOfTarget = Utils.FindTargetOfTarget(target, player, Plugin.ObjectTable);
             foreach (var element in _hudElementsUsingTargetOfTarget)
             {
                 element.Actor = targetOfTarget;
             }
 
             // focus
-            GameObject? focusTarget = Plugin.TargetManager.FocusTarget;
+            IGameObject? focusTarget = Plugin.TargetManager.FocusTarget;
             foreach (var element in _hudElementsUsingFocusTarget)
             {
                 element.Actor = focusTarget;
@@ -631,6 +631,7 @@ namespace DelvUI.Interface
                 [JobIDs.NIN] = new JobHudTypes(typeof(NinjaHud), typeof(NinjaConfig), "Ninja HUD"),
                 [JobIDs.SAM] = new JobHudTypes(typeof(SamuraiHud), typeof(SamuraiConfig), "Samurai HUD"),
                 [JobIDs.RPR] = new JobHudTypes(typeof(ReaperHud), typeof(ReaperConfig), "Reaper HUD"),
+                [JobIDs.VPR] = new JobHudTypes(typeof(ViperHud), typeof(ViperConfig), "Viper HUD"),
 
                 // ranged
                 [JobIDs.BRD] = new JobHudTypes(typeof(BardHud), typeof(BardConfig), "Bard HUD"),
@@ -641,7 +642,8 @@ namespace DelvUI.Interface
                 [JobIDs.BLM] = new JobHudTypes(typeof(BlackMageHud), typeof(BlackMageConfig), "Black Mage HUD"),
                 [JobIDs.SMN] = new JobHudTypes(typeof(SummonerHud), typeof(SummonerConfig), "Summoner HUD"),
                 [JobIDs.RDM] = new JobHudTypes(typeof(RedMageHud), typeof(RedMageConfig), "Red Mage HUD"),
-                [JobIDs.BLU] = new JobHudTypes(typeof(BlueMageHud), typeof(BlueMageConfig), "Blue Mage HUD")
+                [JobIDs.BLU] = new JobHudTypes(typeof(BlueMageHud), typeof(BlueMageConfig), "Blue Mage HUD"),
+                [JobIDs.PCT] = new JobHudTypes(typeof(PictomancerHud), typeof(PictomancerConfig), "Pictomancer HUD")
             };
 
             _unsupportedJobsMap = new Dictionary<uint, Type>()
@@ -670,7 +672,7 @@ namespace DelvUI.Interface
                 // gatherers
                 [JobIDs.MIN] = typeof(MinerConfig),
                 [JobIDs.BOT] = typeof(BotanistConfig),
-                [JobIDs.FSH] = typeof(FisherConfig),
+                [JobIDs.FSH] = typeof(FisherConfig)
             };
 
             _jobTypes = new List<Type>()
@@ -690,6 +692,7 @@ namespace DelvUI.Interface
                 typeof(NinjaConfig),
                 typeof(SamuraiConfig),
                 typeof(ReaperConfig),
+                typeof(ViperConfig),
 
                 typeof(BardConfig),
                 typeof(MachinistConfig),
@@ -698,7 +701,8 @@ namespace DelvUI.Interface
                 typeof(BlackMageConfig),
                 typeof(SummonerConfig),
                 typeof(RedMageConfig),
-                typeof(BlueMageConfig)
+                typeof(BlueMageConfig),
+                typeof(PictomancerConfig)
             };
         }
     }

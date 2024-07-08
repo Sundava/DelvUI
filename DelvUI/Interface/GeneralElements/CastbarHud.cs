@@ -1,19 +1,17 @@
 ﻿using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Interface.Internal;
+using Dalamud.Interface.Textures.TextureWraps;
 using DelvUI.Config;
 using DelvUI.Enums;
 using DelvUI.Helpers;
 using DelvUI.Interface.Bars;
 using DelvUI.Interface.EnemyList;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using ImGuiNET;
-using ImGuiScene;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Numerics;
-using static FFXIVClientStructs.FFXIV.Client.Game.Character.Character;
 using LuminaAction = Lumina.Excel.GeneratedSheets.Action;
 using StructsBattleChara = FFXIVClientStructs.FFXIV.Client.Game.Character.BattleChara;
 
@@ -27,7 +25,7 @@ namespace DelvUI.Interface.GeneralElements
 
         protected LastUsedCast? LastUsedCast;
 
-        public GameObject? Actor { get; set; }
+        public IGameObject? Actor { get; set; }
 
         protected override bool AnchorToParent => Config is UnitFrameCastbarConfig { AnchorToUnitFrame: true };
         protected override DrawAnchor ParentAnchor => Config is UnitFrameCastbarConfig config ? config.UnitFrameAnchor : DrawAnchor.Center;
@@ -53,7 +51,7 @@ namespace DelvUI.Interface.GeneralElements
             }
 
             if (!Config.Preview &&
-                (Actor == null || Actor is not Character || Actor.ObjectKind != ObjectKind.Player && Actor.ObjectKind != ObjectKind.BattleNpc))
+                (Actor == null || Actor is not ICharacter || Actor.ObjectKind != ObjectKind.Player && Actor.ObjectKind != ObjectKind.BattleNpc))
             {
                 return;
             }
@@ -70,7 +68,8 @@ namespace DelvUI.Interface.GeneralElements
             }
 
             Vector2 size = GetSize();
-            bool validIcon = Config.Preview ? true : LastUsedCast?.IconTexture is not null;
+            IDalamudTextureWrap? iconTexture = LastUsedCast?.GetIconTexture();
+            bool validIcon = Config.Preview ? true : iconTexture is not null;
             Vector2 iconSize = Config.ShowIcon && validIcon && !Config.SeparateIcon ? new Vector2(size.Y, size.Y) : Vector2.Zero;
 
             PluginConfigColor fillColor = GetColor();
@@ -91,7 +90,7 @@ namespace DelvUI.Interface.GeneralElements
                 bar.AddForegrounds(new Rect(reverseFillPos, reverseFillSize, reverseFillColor));
             }
 
-            AddExtras(bar, totalCastTime);
+            AddExtras(bar, totalCastTime, iconTexture);
 
             bar.AddForegrounds(progress);
 
@@ -111,7 +110,7 @@ namespace DelvUI.Interface.GeneralElements
                     {
                         ImGui.SetCursorPos(finalIconPos);
 
-                        IDalamudTextureWrap? texture = Config.Preview ? TexturesHelper.GetTexture<LuminaAction>(3577) : LastUsedCast?.IconTexture;
+                        IDalamudTextureWrap? texture = Config.Preview ? TexturesHelper.GetTexture<LuminaAction>(3577) : iconTexture;
                         if (texture != null)
                         {
                             ImGui.Image(texture.ImGuiHandle, finalIconSize);
@@ -148,7 +147,7 @@ namespace DelvUI.Interface.GeneralElements
                 string format = Config.CastTimeLabel.NumberFormat.ToString();
                 Config.CastTimeLabel.SetText(
                     value.ToString("N" + format, ConfigurationManager.Instance.ActiveCultreInfo) +
-                    " / " + 
+                    " / " +
                     totalCastTime.ToString("N" + format, ConfigurationManager.Instance.ActiveCultreInfo)
                 );
             }
@@ -165,7 +164,7 @@ namespace DelvUI.Interface.GeneralElements
 
         private unsafe void UpdateCurrentCast(out float currentCastTime, out float totalCastTime)
         {
-            if (Config.Preview || Actor is not BattleChara battleChara)
+            if (Config.Preview || Actor is not IBattleChara battleChara)
             {
                 currentCastTime = Config.Preview ? 0.5f : 0f;
                 totalCastTime = 1f;
@@ -179,11 +178,11 @@ namespace DelvUI.Interface.GeneralElements
             {
                 current = battleChara.CurrentCastTime;
                 StructsBattleChara* chara = (StructsBattleChara*)battleChara.Address;
-                CastInfo* castInfo = chara->GetCastInfo;
+                CastInfo* castInfo = chara->GetCastInfo();
 
                 if (castInfo != null)
                 {
-                    total = castInfo->AdjustedTotalCastTime;
+                    total = castInfo->TotalCastTime;
                 }
             }
             catch
@@ -212,7 +211,7 @@ namespace DelvUI.Interface.GeneralElements
             }
         }
 
-        public virtual void AddExtras(BarHud bar, float totalCastTime)
+        public virtual void AddExtras(BarHud bar, float totalCastTime, IDalamudTextureWrap? iconTexture)
         {
             // override
         }
@@ -232,7 +231,7 @@ namespace DelvUI.Interface.GeneralElements
 
         }
 
-        public override void AddExtras(BarHud bar, float totalCastTime)
+        public override void AddExtras(BarHud bar, float totalCastTime, IDalamudTextureWrap? iconTexture)
         {
             if (!Config.ShowSlideCast || Config.SlideCastTime <= 0 || Config.Preview)
             {
@@ -249,7 +248,7 @@ namespace DelvUI.Interface.GeneralElements
 
                 if (Config.FillDirection is BarDirection.Left)
                 {
-                    bool validIcon = LastUsedCast?.IconTexture is not null;
+                    bool validIcon = iconTexture is not null;
                     Vector2 iconSize = Config.ShowIcon && validIcon ? new Vector2(Config.Size.Y, Config.Size.Y) : Vector2.Zero;
                     slideCast = Config.ShowIcon ? new Rect(Config.Position, size + new Vector2(iconSize.X, 0), Config.SlideCastColor) : new Rect(Config.Position, size, Config.SlideCastColor);
                 }
@@ -271,12 +270,12 @@ namespace DelvUI.Interface.GeneralElements
 
         public override PluginConfigColor GetColor()
         {
-            if (!Config.UseJobColor || Actor is not Character)
+            if (!Config.UseJobColor || Actor is not ICharacter)
             {
                 return Config.FillColor;
             }
 
-            Character? chara = (Character)Actor;
+            ICharacter? chara = (ICharacter)Actor;
             PluginConfigColor? color = GlobalColors.Instance.ColorForJobId(chara.ClassJob.Id);
             return color ?? Config.FillColor;
         }
@@ -368,7 +367,7 @@ namespace DelvUI.Interface.GeneralElements
 
         public override unsafe bool ShouldShow()
         {
-            GameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
+            IGameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
             if (Actor == target)
             {
                 bool? targetCasting = Utils.IsTargetCasting();
@@ -378,7 +377,7 @@ namespace DelvUI.Interface.GeneralElements
                 }
             }
 
-            GameObject? focusTarget = Plugin.TargetManager.FocusTarget;
+            IGameObject? focusTarget = Plugin.TargetManager.FocusTarget;
             if (Actor == focusTarget)
             {
                 bool? focusTargetCasting = Utils.IsFocusTargetCasting();

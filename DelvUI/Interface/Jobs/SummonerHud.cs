@@ -5,7 +5,10 @@ using DelvUI.Config.Attributes;
 using DelvUI.Helpers;
 using DelvUI.Interface.Bars;
 using DelvUI.Interface.GeneralElements;
+using FFXIVClientStructs.FFXIV.Client.Game.Gauge;
+using FFXIVClientStructs.FFXIV.Common.Lua;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -64,7 +67,7 @@ namespace DelvUI.Interface.Jobs
             return (positions, sizes);
         }
 
-        public override void DrawJobHud(Vector2 origin, PlayerCharacter player)
+        public override void DrawJobHud(Vector2 origin, IPlayerCharacter player)
         {
             Vector2 pos = origin + Config.Position;
 
@@ -99,7 +102,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawIfritBar(Vector2 origin, PlayerCharacter player)
+        private unsafe void DrawIfritBar(Vector2 origin, IPlayerCharacter player)
         {
             SMNGauge gauge = Plugin.JobGauges.Get<SMNGauge>();
             int stackCount = gauge.IsIfritReady ? 1 : 0;
@@ -114,7 +117,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawTitanBar(Vector2 origin, PlayerCharacter player)
+        private void DrawTitanBar(Vector2 origin, IPlayerCharacter player)
         {
             SMNGauge gauge = Plugin.JobGauges.Get<SMNGauge>();
             int stackCount = gauge.IsTitanReady ? 1 : 0;
@@ -129,7 +132,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawGarudaBar(Vector2 origin, PlayerCharacter player)
+        private void DrawGarudaBar(Vector2 origin, IPlayerCharacter player)
         {
             SMNGauge gauge = Plugin.JobGauges.Get<SMNGauge>();
             int stackCount = gauge.IsGarudaReady ? 1 : 0;
@@ -144,22 +147,33 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void HandleAttunementStacks(Vector2 origin, PlayerCharacter player)
+        private enum Primal
+        {
+            None = 0,
+            Ifrit = 1,
+            Titan = 2,
+            Garuda = 3
+        }
+
+        private unsafe void HandleAttunementStacks(Vector2 origin, IPlayerCharacter player)
         {
             SMNGauge gauge = Plugin.JobGauges.Get<SMNGauge>();
-            byte attunementStacks = gauge.Attunement;
 
-            if (gauge.IsIfritAttuned && Config.StacksBar.ShowIfritStacks)
+            byte value = *((byte*)(new IntPtr(gauge.Address) + 0xE));
+            Primal primal = (Primal)(value & 3);
+            int stacks = ((value >> 2) & 7);
+
+            if (primal == Primal.Ifrit && Config.StacksBar.ShowIfritStacks)
             {
-                DrawStacksBar(origin, player, attunementStacks, 2, Config.StacksBar.IfritStackColor);
+                DrawStacksBar(origin, player, stacks, 2, Config.StacksBar.IfritStackColor);
             }
-            else if (gauge.IsTitanAttuned && Config.StacksBar.ShowTitanStacks)
+            else if (primal == Primal.Titan && Config.StacksBar.ShowTitanStacks)
             {
-                DrawStacksBar(origin, player, attunementStacks, 4, Config.StacksBar.TitanStackColor);
+                DrawStacksBar(origin, player, stacks, 4, Config.StacksBar.TitanStackColor);
             }
-            else if (gauge.IsGarudaAttuned && Config.StacksBar.ShowGarudaStacks)
+            else if (primal == Primal.Garuda && Config.StacksBar.ShowGarudaStacks)
             {
-                DrawStacksBar(origin, player, attunementStacks, 4, Config.StacksBar.GarudaStackColor);
+                DrawStacksBar(origin, player, stacks, 4, Config.StacksBar.GarudaStackColor);
             }
             else if (!Config.StacksBar.HideWhenInactive)
             {
@@ -167,7 +181,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawAetherBar(Vector2 origin, PlayerCharacter player)
+        private void DrawAetherBar(Vector2 origin, IPlayerCharacter player)
         {
             byte stackCount = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId == 304)?.StackCount ?? 0;
 
@@ -183,7 +197,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawTranceBar(Vector2 origin, PlayerCharacter player)
+        private unsafe void DrawTranceBar(Vector2 origin, IPlayerCharacter player)
         {
             SMNGauge gauge = Plugin.JobGauges.Get<SMNGauge>();
             PluginConfigColor tranceColor;
@@ -193,22 +207,38 @@ namespace DelvUI.Interface.Jobs
             float tranceDuration = 0f;
             tranceColor = Config.TranceBar.FillColor;
 
-            if (gauge.IsIfritAttuned || gauge.IsTitanAttuned || gauge.IsGarudaAttuned)
+            // Dawntrail Fixes
+            bool isSolarBahamutReady = gauge.AetherFlags.HasFlag(AetherFlags.None + 0x8) ||         // 0x8    Formerly Titan Attuned
+                                       gauge.AetherFlags.HasFlag(AetherFlags.None + 0xC);           // 0xC    Formerly Garuda Attuned
+            bool isPhoenixReady = gauge.AetherFlags.HasFlag(AetherFlags.None + 0x4);                // 0x4    Formerly Ifrit Attuned
+            bool isNormalBahamutReady = !isSolarBahamutReady && !isPhoenixReady;                    // You'd think it would be 0x10, but thats unused now
+
+            byte summonedPrimal = *((byte*)(new IntPtr(gauge.Address) + 0xE));                      // Formally Attunement, now...?
+            Primal primal = (Primal)(summonedPrimal & 3);
+
+            if (primal != Primal.None)
             {
-                tranceColor = gauge.IsIfritAttuned ? Config.TranceBar.IfritColor : gauge.IsTitanAttuned ? Config.TranceBar.TitanColor : gauge.IsGarudaAttuned ? Config.TranceBar.GarudaColor : Config.TranceBar.FillColor;
+                tranceColor = primal == Primal.Ifrit ? Config.TranceBar.IfritColor : primal == Primal.Titan ? Config.TranceBar.TitanColor : primal == Primal.Garuda ? Config.TranceBar.GarudaColor : Config.TranceBar.FillColor;
                 tranceDuration = gauge.AttunmentTimerRemaining;
                 maxDuration = 30f;
             }
             else
             {
-                if (gauge.IsBahamutReady)
+                if (isSolarBahamutReady)
+                {
+                    tranceColor = Config.TranceBar.SolarBahamutColor;
+                    tranceDuration = gauge.SummonTimerRemaining;
+                    spellID = 36992;
+                    maxDuration = 15f;
+                }
+                else if (isNormalBahamutReady)
                 {
                     tranceColor = Config.TranceBar.BahamutColor;
                     tranceDuration = gauge.SummonTimerRemaining;
                     spellID = 7427;
                     maxDuration = 15f;
                 }
-                else if (gauge.IsPhoenixReady)
+                else if (isPhoenixReady)
                 {
                     tranceColor = Config.TranceBar.PhoenixColor;
                     tranceDuration = gauge.SummonTimerRemaining;
@@ -252,7 +282,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawStacksBar(Vector2 origin, PlayerCharacter player, int amount, int max, PluginConfigColor stackColor, BarGlowConfig? glowConfig = null)
+        private void DrawStacksBar(Vector2 origin, IPlayerCharacter player, int amount, int max, PluginConfigColor stackColor, BarGlowConfig? glowConfig = null)
         {
             SummonerStacksBarConfig config = Config.StacksBar;
 
@@ -338,16 +368,20 @@ namespace DelvUI.Interface.Jobs
         [Order(27)]
         public PluginConfigColor PhoenixColor = new(new Vector4(240f / 255f, 100f / 255f, 10f / 255f, 100f / 100f));
 
-        [ColorEdit4("Ifrit Color")]
+        [ColorEdit4("Solar Bahamut Color")]
         [Order(28)]
+        public PluginConfigColor SolarBahamutColor = new(new Vector4(235f / 255f, 241f / 255f, 252f / 255f, 100f / 100f));
+
+        [ColorEdit4("Ifrit Color")]
+        [Order(29)]
         public PluginConfigColor IfritColor = new(new Vector4(200f / 255f, 40f / 255f, 0f / 255f, 100f / 100f));
 
         [ColorEdit4("Titan Color")]
-        [Order(29)]
+        [Order(30)]
         public PluginConfigColor TitanColor = new(new Vector4(210f / 255f, 150f / 255f, 26f / 255f, 100f / 100f));
 
         [ColorEdit4("Garuda Color")]
-        [Order(30)]
+        [Order(31)]
         public PluginConfigColor GarudaColor = new(new Vector4(60f / 255f, 160f / 255f, 100f / 255f, 100f / 100f));
 
         [Checkbox("Hide Primals")]

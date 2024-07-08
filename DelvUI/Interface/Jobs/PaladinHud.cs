@@ -46,16 +46,10 @@ namespace DelvUI.Interface.Jobs
                 sizes.Add(Config.RequiescatStacksBar.Size);
             }
 
-            if (Config.AtonementBar.Enabled)
-            {
-                positions.Add(Config.Position + Config.AtonementBar.Position);
-                sizes.Add(Config.AtonementBar.Size);
-            }
-
             return (positions, sizes);
         }
 
-        public override void DrawJobHud(Vector2 origin, PlayerCharacter player)
+        public override void DrawJobHud(Vector2 origin, IPlayerCharacter player)
         {
             Vector2 pos = origin + Config.Position;
 
@@ -73,14 +67,9 @@ namespace DelvUI.Interface.Jobs
             {
                 DrawRequiescatBar(pos, player);
             }
-
-            if (Config.AtonementBar.Enabled)
-            {
-                DrawAtonementBar(pos, player);
-            }
         }
 
-        private void DrawOathGauge(Vector2 origin, PlayerCharacter player)
+        private void DrawOathGauge(Vector2 origin, IPlayerCharacter player)
         {
             PLDGauge gauge = Plugin.JobGauges.Get<PLDGauge>();
 
@@ -96,7 +85,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawFightOrFlightBar(Vector2 origin, PlayerCharacter player)
+        private void DrawFightOrFlightBar(Vector2 origin, IPlayerCharacter player)
         {
             float fightOrFlightDuration = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 76)?.RemainingTime ?? 0f;
 
@@ -109,7 +98,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawRequiescatBar(Vector2 origin, PlayerCharacter player)
+        private void DrawRequiescatBar(Vector2 origin, IPlayerCharacter player)
         {
             Status? requiescatBuff = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 1368);
             float requiescatDuration = Math.Max(0f, requiescatBuff?.RemainingTime ?? 0f);
@@ -127,19 +116,6 @@ namespace DelvUI.Interface.Jobs
                 {
                     AddDrawActions(bar.GetDrawActions(origin, Config.RequiescatStacksBar.StrataLevel));
                 }
-            }
-        }
-
-        private void DrawAtonementBar(Vector2 origin, PlayerCharacter player)
-        {
-            byte stackCount = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 1902)?.StackCount ?? 0;
-
-            if (Config.AtonementBar.HideWhenInactive && stackCount == 0) { return; };
-
-            BarHud[] bars = BarUtilities.GetChunkedBars(Config.AtonementBar, 3, stackCount, 3f, 0, player);
-            foreach (BarHud bar in bars)
-            {
-                AddDrawActions(bar.GetDrawActions(origin, Config.AtonementBar.StrataLevel));
             }
         }
     }
@@ -183,13 +159,6 @@ namespace DelvUI.Interface.Jobs
             new Vector2(64, -32),
             new Vector2(126, 20),
             new PluginConfigColor(new Vector4(61f / 255f, 61f / 255f, 255f / 255f, 100f / 100f))
-        );
-
-        [NestedConfig("Atonement Bar", 50)]
-        public ChunkedBarConfig AtonementBar = new ChunkedBarConfig(
-            new Vector2(0, -10),
-            new Vector2(254, 20),
-            new PluginConfigColor(new Vector4(240f / 255f, 176f / 255f, 0f / 255f, 100f / 100f))
         );
     }
 }

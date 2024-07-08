@@ -22,7 +22,7 @@ namespace DelvUI.Interface.PartyCooldowns
             try
             {
                 _onActionUsedHook = Plugin.GameInteropProvider.HookFromSignature<OnActionUsedDelegate>(
-                    "40 55 53 57 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ?? 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 70",
+                    "40 ?? 56 57 41 ?? 41 ?? 41 ?? 48 ?? ?? ?? ?? ?? ?? ?? 48",
                     OnActionUsed
                 );
                 _onActionUsedHook?.Enable();
@@ -159,6 +159,8 @@ namespace DelvUI.Interface.PartyCooldowns
 
         private unsafe void OnActionUsed(int characterId, IntPtr characterAddress, IntPtr position, IntPtr effect, IntPtr unk1, IntPtr unk2)
         {
+            _onActionUsedHook?.Original(characterId, characterAddress, position, effect, unk1, unk2);
+
             uint actorId = (uint)characterId;
             bool isAction = *((byte*)effect.ToPointer() + 0x1F) == 1;
 
@@ -169,9 +171,9 @@ namespace DelvUI.Interface.PartyCooldowns
                 if (!_cooldownsMap.ContainsKey(actorId))
                 {
                     // check if its a party member's pet
-                    GameObject? actor = Plugin.ObjectTable.SearchById(actorId);
+                    IGameObject? actor = Plugin.ObjectTable.SearchById(actorId);
 
-                    if (actor is BattleNpc battleNpc && _cooldownsMap.ContainsKey(battleNpc.OwnerId))
+                    if (actor is IBattleNpc battleNpc && _cooldownsMap.ContainsKey(battleNpc.OwnerId))
                     {
                         actorId = battleNpc.OwnerId;
                     }
@@ -185,6 +187,13 @@ namespace DelvUI.Interface.PartyCooldowns
                 if (actorId > 0)
                 {
                     uint actionID = *((uint*)effect.ToPointer() + 0x2);
+
+                    Plugin.Logger.Debug("ACTION " + actionID.ToString());
+                    // special case for starry muse > set id to scenic muse
+                    if (actionID == 34675)
+                    {
+                        actionID = 35349;
+                    }
 
                     // special case for technical step / finish
                     // we detect when technical step is pressed and save the time
@@ -216,8 +225,6 @@ namespace DelvUI.Interface.PartyCooldowns
                     }
                 }
             }
-
-            _onActionUsedHook?.Original(characterId, characterAddress, position, effect, unk1, unk2);
         }
 
         public void ForcedUpdate()
@@ -243,7 +250,7 @@ namespace DelvUI.Interface.PartyCooldowns
                 var player = Plugin.ClientState.LocalPlayer;
                 if (_config.ShowWhenSolo && player != null)
                 {
-                    _cooldownsMap.Add(player.ObjectId, CooldownsForMember(player.ObjectId, player.ClassJob.Id, player.Level, null));
+                    _cooldownsMap.Add((uint)player.GameObjectId, CooldownsForMember((uint)player.GameObjectId, player.ClassJob.Id, player.Level, null));
                 }
             }
             else if (!_config.ShowOnlyInDuties || Plugin.Condition[ConditionFlag.BoundByDuty])

@@ -55,7 +55,7 @@ namespace DelvUI.Interface.Jobs
             return (positions, sizes);
         }
 
-        public override void DrawJobHud(Vector2 origin, PlayerCharacter player)
+        public override void DrawJobHud(Vector2 origin, IPlayerCharacter player)
         {
             Vector2 pos = origin + Config.Position;
 
@@ -80,7 +80,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawBioBar(Vector2 origin, PlayerCharacter player)
+        private void DrawBioBar(Vector2 origin, IPlayerCharacter player)
         {
             var target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
 
@@ -91,16 +91,11 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private unsafe void DrawFairyGaugeBar(Vector2 origin, PlayerCharacter player)
+        private unsafe void DrawFairyGaugeBar(Vector2 origin, IPlayerCharacter player)
         {
-            // TODO: Clean this up when CS fixes the offsets
-            //byte fairyGauge = Plugin.JobGauges.Get<SCHGauge>().FairyGauge;
-            //short seraphDuration = Math.Abs(Plugin.JobGauges.Get<SCHGauge>().SeraphTimer);
-            // +
             SCHGauge gauge = Plugin.JobGauges.Get<SCHGauge>();
-            byte fairyGauge = *((byte *)(new IntPtr(gauge.Address) + 0x9));
-            float seraphDuration = *((short*)(new IntPtr(gauge.Address) + 0xA));
-            // -
+            byte fairyGauge = gauge.FairyGauge;
+            float seraphDuration = gauge.SeraphTimer;
 
             if (Config.FairyGaugeBar.HideWhenInactive && fairyGauge == 0 && (seraphDuration == 0 || !Config.FairyGaugeBar.ShowSeraph))
             {
@@ -123,7 +118,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawAetherBar(Vector2 origin, PlayerCharacter player)
+        private void DrawAetherBar(Vector2 origin, IPlayerCharacter player)
         {
             byte stackCount = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 304)?.StackCount ?? 0;
 
@@ -139,9 +134,9 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawSacredSoilBar(Vector2 origin, PlayerCharacter player)
+        private void DrawSacredSoilBar(Vector2 origin, IPlayerCharacter player)
         {
-            float sacredSoilDuration = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 298 or 1944 && o.SourceId == player.ObjectId)?.RemainingTime ?? 0f;
+            float sacredSoilDuration = Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 298 or 1944 && o.SourceId == player.GameObjectId)?.RemainingTime ?? 0f;
 
             if (!Config.SacredSoilBar.HideWhenInactive || sacredSoilDuration > 0)
             {

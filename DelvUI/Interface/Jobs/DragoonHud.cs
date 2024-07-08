@@ -41,11 +41,6 @@ namespace DelvUI.Interface.Jobs
                 sizes.Add(Config.PowerSurgeBar.Size);
             }
 
-            if (Config.EyeOfTheDragonBar.Enabled)
-            {
-                positions.Add(Config.Position + Config.EyeOfTheDragonBar.Position);
-                sizes.Add(Config.EyeOfTheDragonBar.Size);
-            }
 
             if (Config.FirstmindsFocusBar.Enabled)
             {
@@ -62,7 +57,7 @@ namespace DelvUI.Interface.Jobs
             return (positions, sizes);
         }
 
-        public override void DrawJobHud(Vector2 origin, PlayerCharacter player)
+        public override void DrawJobHud(Vector2 origin, IPlayerCharacter player)
         {
             var position = origin + Config.Position;
             if (Config.ChaosThrustBar.Enabled)
@@ -73,11 +68,6 @@ namespace DelvUI.Interface.Jobs
             if (Config.PowerSurgeBar.Enabled)
             {
                 DrawPowerSurgeBar(position, player);
-            }
-
-            if (Config.EyeOfTheDragonBar.Enabled)
-            {
-                DrawEyeOfTheDragonBars(position, player);
             }
 
             if (Config.FirstmindsFocusBar.Enabled)
@@ -91,9 +81,9 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawChaosThrustBar(Vector2 origin, PlayerCharacter player)
+        private void DrawChaosThrustBar(Vector2 origin, IPlayerCharacter player)
         {
-            GameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
+            IGameObject? target = Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target;
 
             BarHud? bar = BarUtilities.GetDoTBar(Config.ChaosThrustBar, player, target, ChaosThrustIDs, ChaosThrustDurations);
             if (bar != null)
@@ -102,21 +92,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawEyeOfTheDragonBars(Vector2 origin, PlayerCharacter player)
-        {
-            DRGGauge gauge = Plugin.JobGauges.Get<DRGGauge>();
-
-            if (!Config.EyeOfTheDragonBar.HideWhenInactive || gauge.EyeCount > 0)
-            {
-                BarHud[] bars = BarUtilities.GetChunkedBars(Config.EyeOfTheDragonBar, 2, gauge.EyeCount, 2, 0, player);
-                foreach (BarHud bar in bars)
-                {
-                    AddDrawActions(bar.GetDrawActions(origin, Config.EyeOfTheDragonBar.StrataLevel));
-                }
-            }
-        }
-
-        private void DrawFirstmindsFocusBars(Vector2 origin, PlayerCharacter player)
+        private void DrawFirstmindsFocusBars(Vector2 origin, IPlayerCharacter player)
         {
             DRGGauge gauge = Plugin.JobGauges.Get<DRGGauge>();
 
@@ -130,7 +106,7 @@ namespace DelvUI.Interface.Jobs
             }
         }
 
-        private void DrawBloodOfTheDragonBar(Vector2 origin, PlayerCharacter player)
+        private void DrawBloodOfTheDragonBar(Vector2 origin, IPlayerCharacter player)
         {
             DRGGauge gauge = Plugin.JobGauges.Get<DRGGauge>();
             float duration = gauge.LOTDTimer / 1000f;
@@ -139,12 +115,12 @@ namespace DelvUI.Interface.Jobs
             {
                 Config.LifeOfTheDragonBar.Label.SetValue(duration);
 
-                BarHud bar = BarUtilities.GetProgressBar(Config.LifeOfTheDragonBar, duration, 30, 0f, player);
+                BarHud bar = BarUtilities.GetProgressBar(Config.LifeOfTheDragonBar, duration, 20, 0f, player);
                 AddDrawActions(bar.GetDrawActions(origin, Config.LifeOfTheDragonBar.StrataLevel));
             }
         }
 
-        private void DrawPowerSurgeBar(Vector2 origin, PlayerCharacter player)
+        private void DrawPowerSurgeBar(Vector2 origin, IPlayerCharacter player)
         {
             var duration = Math.Abs(Utils.StatusListForBattleChara(player).FirstOrDefault(o => o.StatusId is 2720)?.RemainingTime ?? 0f);
             if (!Config.PowerSurgeBar.HideWhenInactive || duration > 0f)
@@ -177,13 +153,6 @@ namespace DelvUI.Interface.Jobs
             new(0, -54),
             new(254, 20),
             new(new Vector4(244f / 255f, 206f / 255f, 191f / 255f, 100f / 100f))
-        );
-
-        [NestedConfig("Eye of the Dragon", 40)]
-        public ChunkedBarConfig EyeOfTheDragonBar = new ChunkedBarConfig(
-            new(-64, -32),
-            new(126, 20),
-            new(new Vector4(255f / 255f, 125f / 255f, 125f / 255f, 100f / 100f))
         );
 
         [NestedConfig("Firstminds' Focus", 40)]
