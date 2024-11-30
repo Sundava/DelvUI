@@ -363,7 +363,8 @@ namespace DelvUI.Helpers
         {
             if (IsProxyEnabled)
             {
-                if (_wndProcPtr == IntPtr.Zero) {
+                if (_wndProcPtr == IntPtr.Zero)
+                {
                     HookWndProc();
                 }
             }
