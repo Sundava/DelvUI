@@ -1,7 +1,7 @@
 ﻿/*
 Copyright(c) 2021 attickdoor (https://github.com/attickdoor/MOActionPlugin)
 Modifications Copyright(c) 2021 DelvUI
-09/21/2021 - Used original's code hooks and action validations while using 
+09/21/2021 - Used original's code hooks and action validations while using
 DelvUI's own logic to select a target.
 
 This program is free software: you can redistribute it and/or modify
@@ -98,7 +98,7 @@ namespace DelvUI.Helpers
         {
             Dispose(false);
         }
-        
+
         public void Dispose()
         {
             Plugin.Logger.Info("\tDisposing InputsHelper...");
@@ -288,12 +288,12 @@ namespace DelvUI.Helpers
 
         #region mouseover inputs proxy
         private bool? _leftButtonClicked = null;
-        public bool LeftButtonClicked => _leftButtonClicked.HasValue ? 
-            _leftButtonClicked.Value : 
+        public bool LeftButtonClicked => _leftButtonClicked.HasValue ?
+            _leftButtonClicked.Value :
             (IsProxyEnabled ? false : ImGui.IsMouseClicked(ImGuiMouseButton.Left));
 
         private bool? _rightButtonClicked = null;
-        public bool RightButtonClicked => _rightButtonClicked.HasValue ? 
+        public bool RightButtonClicked => _rightButtonClicked.HasValue ?
             _rightButtonClicked.Value :
             (IsProxyEnabled ? false : ImGui.IsMouseClicked(ImGuiMouseButton.Right));
 
@@ -332,21 +332,8 @@ namespace DelvUI.Helpers
                         {
                             _leftButtonClicked = _leftButtonWasDown && msg == WM_LBUTTONUP;
                             _rightButtonClicked = _rightButtonWasDown && msg == WM_RBUTTONUP;
-
-                            bool shouldTakeInput = true;
-                            if (msg == WM_LBUTTONUP && !_leftButtonWasDown ||
-                                msg == WM_RBUTTONUP && !_rightButtonWasDown)
-                            {
-                                shouldTakeInput = false;
-                            }
-
                             _leftButtonWasDown = msg == WM_LBUTTONDOWN;
                             _rightButtonWasDown = msg == WM_RBUTTONDOWN;
-
-                            if (shouldTakeInput)
-                            {
-                                return (IntPtr)0;
-                            }
                         }
                         // otherwise we let imgui handle the inputs
                         else
@@ -366,7 +353,8 @@ namespace DelvUI.Helpers
         {
             if (IsProxyEnabled)
             {
-                if (_wndProcPtr == IntPtr.Zero) {
+                if (_wndProcPtr == IntPtr.Zero)
+                {
                     HookWndProc();
                 }
             }
@@ -376,8 +364,8 @@ namespace DelvUI.Helpers
             }
         }
 
-        public void OnFrameEnd() 
-        { 
+        public void OnFrameEnd()
+        {
             _leftButtonClicked = null;
             _rightButtonClicked = null;
         }
